@@ -1,0 +1,62 @@
+% A5 Lab Report
+% Bernard Moussad
+% 10/30/2017
+
+# Benchmarking the ArrayStrand implementation
+
+## Show that ArrayStrand.cutAndSplice() is O(N)
+Record your response here.
+
+ArrayStrand:	 splice length	              524,288 	 time 	 0.162
+ArrayStrand:	 splice length	            1,048,576 	 time 	 0.294 
+ArrayStrand:	 splice length	            2,097,152 	 time 	 0.558 
+ArrayStrand:	 splice length	            4,194,304 	 time 	 1.909 
+ArrayStrand:	 splice length	            8,388,608 	 time 	 3.992 
+ArrayStrand:	 splice length	           16,777,216 	 time 	 11.867 
+ArrayStrand:	 splice length	           33,554,432 	 time 	 32.299 
+
+It has a for loop and everything surrounding that for loop and inside it is constant meaning the method is O(N).
+
+Ratios 2.72,2.973, 2.091, 3.421, 1.898,  1.814
+log Base 2 of a majority of these ratios results in a k constant of 1 which means the time complexity of the ArrayStrand’s cutAndSplice would be linear.
+
+## Determine the largest power-of-two splice supported with 512M heap
+Record your response here.
+2^15 or 2,768
+
+## Determine the largest power-of-two splice supported with 1024M heap
+Record your response here.
+
+2^17 or 131,072. It took .261 seconds.
+
+## Determine the largest power-of-two splice supported as heap doubles
+Record your response here.
+
+The splice size double with each doubling of the heap size. It stops at 2^25 or 33,554,432.
+
+
+# Verifying the LinkedStrand implementation
+
+## Show that LinkedStrand.cutAndSplice() is O(1)
+Record your response here.
+LinkedStrand:	 splice length	           16,777,216 	 time 	 0.002 recombinant length          755,294,610
+LinkedStrand:	 splice length	           33,554,432 	 time 	 0.002 recombinant length        1,510,269,330
+LinkedStrand:	 splice length	           67,108,864 	 time 	 0.002 recombinant length        3,020,218,770
+LinkedStrand:	 splice length	          134,217,728 	 time 	 0.002 recombinant length        6,040,117,650
+LinkedStrand:	 splice length	          268,435,456 	 time 	 0.001 recombinant length       12,079,915,410
+LinkedStrand:	 splice length	          536,870,912 	 time 	 0.003 recombinant length       24,159,510,930
+LinkedStrand:	 splice length	        1,073,741,824 	 time 	 0.007 recombinant length       48,318,701,970
+
+As seen by the times by running LinkedStrand through DnaSimulation, the time generally remains around .001 to .002 seconds with the occasional outlier but overall the time complexity is obviously constant.
+ 
+## Determine the largest power-of-two splice supported with 512M heap
+Record your response here.
+2^26 or 67,108,864
+
+## Determine the largest power-of-two splice supported with 1024M heap
+Record your response here.
+2^27 or 134,217,728
+
+## Determine the largest power-of-two splice supported as heap doubles
+Record your response here.
+2^30 or 1,073,741,824
