@@ -2,7 +2,10 @@
 #include <cmath>
 #include <ctime>
 #include <string>
+#include <assert.h>
 using namespace std;
+
+
 
 struct TriviaNode
 {
@@ -12,52 +15,55 @@ struct TriviaNode
 	TriviaNode* next;
 
 };
-
 int addQuestion(string question, string answer, int points, TriviaNode* &head, TriviaNode* &tail);
 void initialTrivia(TriviaNode* &head, TriviaNode* &tail);
 int askQuestion(TriviaNode* &head, int numToAsk);
+void test_addQuestion(void);
 
+#ifdef	UNIT_TESTING
+test_addQuestion();
+#else
 int main() {
 	TriviaNode* trivia = NULL;
 	TriviaNode* tail = NULL;
-	// string player = "Bernie";
-	// string response;
-	// string question;
-	// string answer;
-	// int points;	
-	// cout<<"* * * Welcome to "<<player<<"'s trivia quiz game * * *"<<endl;
-	// cout<<"Enter a question: ";
-	// getline(cin,question);
-
-	// cout<<"\nEnter an answer: ";
-	// getline(cin,answer);
-
-	// cout<<"\nEnter award points: ";
-	// cin>>points;
-
-	// cout<<"Continue? (Yes/No): ";
-	// getline(cin,response);
-
-	//  while(response.compare("no") != 0) {
-	// 	cout<<"Enter a question: ";
-	// 	getline(cin,question);
-
-	// 	cout<<"\nEnter an answer: ";
-	// 	getline(cin,answer);
-	// 	cout<<"\nEnter award points: ";
-	// 	cin>>points;
-	// 	cout<<"Continue? (Yes/No): ";
-	// 	getline(cin,response);
-	//  }
-	initialTrivia(trivia, tail);
-	//cout<<trivia->question<<endl;
-	// TriviaNode* access;
-	// access = trivia;
-	//cout<<tail<<endl;
+	TriviaNode* ptrivia = NULL;
+	TriviaNode* ptail = NULL;
+	initialTrivia(trivia,tail);
+	string player = "Bernie";
+	cout<<"* * * Welcome to "<<player<<"'s trivia quiz game * * *"<<endl;
+	string response;
+	string question;
+	string answer;
+	int points;	
 	
-	askQuestion(trivia, 2);
-}
+	cout<<"Enter a question: ";
+	getline(cin,question);
 
+	cout<<"\nEnter an answer: ";
+	getline(cin,answer);
+
+	cout<<"\nEnter award points: ";
+	cin>>points;
+
+	cout<<"Continue? (Yes/No): ";
+	getline(cin,response);
+	addQuestion(question, answer, points, ptrivia, ptail);
+	cout<<"Continue? (Yes/No): ";
+	getline(cin,response);
+	 while(response.compare("no") != 0) {
+		cout<<"Enter a question: ";
+		getline(cin,question);
+		cout<<"\nEnter an answer: ";
+		getline(cin,answer);
+		cout<<"\nEnter award points: ";
+		cin>>points;
+		cout<<"Continue? (Yes/No): ";
+		getline(cin,response);
+		addQuestion(question, answer, points, ptrivia, ptail);
+	 }
+	 askQuestion(trivia, 3);
+}
+#endif
 int addQuestion(string question, string answer, int points, TriviaNode* &head, TriviaNode* &tail) {
 	TriviaNode* q1 = new TriviaNode;
 	if (q1 == NULL) {
@@ -83,17 +89,31 @@ int addQuestion(string question, string answer, int points, TriviaNode* &head, T
 int askQuestion(TriviaNode* &head, int numToAsk) {
 	
 	if (numToAsk < 1) {
-		cout<<"Must ask at least 1 question"<<endl;
+		cout<<"Warning - The number of trivia to be asked must be equal to or larger than 1\n"<<endl;
 		return 1;
 	}
-
+	if (numToAsk > 3) {
+		cout<<"Warning - The are only three trivia in the list.\n"<<endl;
+		return 1;
+	}
 	TriviaNode* access = new TriviaNode;
+	string answer;
 	access = head;
-	int start = 0;
-	while((access) != NULL && start < numToAsk) {
-		cout<<access->question<<endl;
-		access = access->next;
-		start++;
+	
+	int playerPoints = 0;
+	
+	for(int start = 0; access != NULL && start < numToAsk; access = access->next, start++) {
+		cout<<"Question: "<<access->question<<endl;
+		cout<<"Answer: ";
+		getline(cin,answer);
+		if ((access->answer).compare(answer) == 0) {
+			cout<<"Your answer is correct. You receive: "<<access->points<<" points"<<endl;
+			playerPoints += access->points;
+		}
+		else {
+			cout<<"Your answer is wrong. The correct answer is: "<<access->answer<<endl;
+		}
+		cout<<"Your total points is: "<<playerPoints<<endl;
 	}
 	return 0;
 }
@@ -102,6 +122,35 @@ void initialTrivia(TriviaNode* &head, TriviaNode* &tail) {
 	addQuestion("How long was the shortest war on record? (Hint: how many minutes)", "38", 100, head, tail);
 	addQuestion("What was Bank of America's original name? (Hint: Bank of Italy or Bank of Germany)", "Bank of Italy", 50, head, tail);
 	addQuestion("What is the best-selling video game of all time? (Hint: Minecraft or Tetris)", "Tetris", 20, head, tail);
+}
+void test_addQuestion(void) {
+	TriviaNode* head = NULL;
+	TriviaNode* tail = NULL;
+	initialTrivia(head, tail);
+	cout<<"*** This is a debug version ***"<<endl;
+	cout<<"Unit Test Case 1: Ask no questions. The program should give a warning message."<<endl;
+	askQuestion(head, 0);
+	cout<<"Unit Test Case 2.1: Ask 1 question in the linked list. The tester enters an incorrect answer."<<endl;
+	assert(0 == askQuestion(head,1));
+	cout<<"Case 2.1 passed...";
+	cout<<"Unit Test Case 2.2: Ask 1 question in the linked list. The tester enters a correct answer."<<endl;
+	assert(0 == askQuestion(head,1));
+	cout<<"Case 2.2 passed...";
+	cout<<"Unit Test Case 3.1: Ask 2 questions in the linked list. The tester enters an incorrect answer."<<endl;
+	assert(0 == askQuestion(head,2));
+	cout<<"Case 3.1 passed...";
+	cout<<"Unit Test Case 3.2: Ask 2 questions in the linked list. The tester enters a correct answer."<<endl;
+	assert(0 == askQuestion(head,2));
+	cout<<"Case 3.2 passed...";
+	cout<<"Unit Test Case 4.1: Ask 3 questions in the linked list. The tester enters an incorrect answer."<<endl;
+	assert(0 == askQuestion(head,3));
+	cout<<"Case 4.1 passed...";
+	cout<<"Unit Test Case 4.2: Ask 3 questions in the linked list. The tester enters a correct answer."<<endl;
+	assert(0 == askQuestion(head,3));
+	cout<<"Case 4.2 passed...";
+	cout<<"Unit Test Case 5: Ask five questions in the linked list."<<endl;
+	askQuestion(head,5);
+	cout<<"\n*** End of the Debug Version ***"<<endl;
 }
 
 
