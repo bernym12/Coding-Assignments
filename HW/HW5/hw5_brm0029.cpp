@@ -35,6 +35,10 @@ int main() {
 }
 
 #else
+// This is the main driver.
+// The user is able to add questions, answers, and points to a trivia list.
+// They are then asked questions from a hardcoded trivia list and given points
+// based on if they get the answers right or wrong.
 
 int main() {
 	TriviaNode* trivia = NULL;
@@ -74,7 +78,11 @@ int main() {
 }
 #endif
 
-
+// addQuestion takes the inputs of a question, answer, points, the head of a TriviaNode, and tail of TriviaNode.
+// It creates a new TriviaNode and assigns the corresponding values to the appropriate fields.
+// Then it checks to see if the passed in head points to NULL.
+// If yes, then the new question gets pointed to by head and tail.
+// If no, then the question gets appended to the trivia list.
 int addQuestion(string question, string answer, int points, TriviaNode* &head, TriviaNode* &tail) {
 	TriviaNode* q1 = new TriviaNode;
 	if (q1 == NULL) {
@@ -97,6 +105,13 @@ int addQuestion(string question, string answer, int points, TriviaNode* &head, T
 	return 0;
 }
 
+// askQuestion takes the inputs of a trivia list and a number of questions to ask.
+// It iterates through the trivia list based on the input of numToAsk. 
+// It asks the question it currently is accessing, then compares the user's input to the answer.
+// If they match, the user is awarded the corresponding points.
+// Otherwise, they are told the correct answer and not awarded points.
+// If numToask is less than 1 or greater than the length of the trivia list, 
+// an error is thrown.
 int askQuestion(TriviaNode* &head, int numToAsk) {
 	
 	if (numToAsk < 1) {
@@ -132,12 +147,16 @@ int askQuestion(TriviaNode* &head, int numToAsk) {
 	return 0;
 }
 
+// initialTrivia takes the inputs of an trivia list's head and tail.
+// It adds 3 hardcoded questions to the trivia list using the addQuestion 
+// function. 
 void initialTrivia(TriviaNode* &head, TriviaNode* &tail) {
 	addQuestion("How long was the shortest war on record? (Hint: how many minutes)", "38", 100, head, tail);
 	addQuestion("What was Bank of America's original name? (Hint: Bank of Italy or Bank of Germany)", "Bank of Italy", 50, head, tail);
 	addQuestion("What is the best-selling video game of all time? (Hint: Minecraft or Tetris)", "Tetris", 20, head, tail);
 }
 
+//	This driver tests the functionality of the askQuestion method.
 void test_askQuestion(void) {
 	TriviaNode* head = NULL;
 	TriviaNode* tail = NULL;
