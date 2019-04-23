@@ -1,10 +1,15 @@
+/**
+* I researched how to implement pointers as nodes 
+* I researched how to make stings lowercase in order to compare them correctly
+* I researched how to perform unit testing using macros
+*/
 #include <iostream>
-#include <cmath>
-#include <ctime>
+// #include <cmath>
+// #include <ctime>
+#include <cctype>
 #include <string>
 #include <assert.h>
 using namespace std;
-
 
 
 struct TriviaNode
@@ -15,10 +20,12 @@ struct TriviaNode
 	TriviaNode* next;
 
 };
+
 int addQuestion(string question, string answer, int points, TriviaNode* &head, TriviaNode* &tail);
 void initialTrivia(TriviaNode* &head, TriviaNode* &tail);
 int askQuestion(TriviaNode* &head, int numToAsk);
 void test_askQuestion(void);
+
 // #define UNIT_TESTING
 #ifdef	UNIT_TESTING
 int main() {
@@ -52,8 +59,9 @@ int main() {
 		addQuestion(question, answer, points, ptrivia, ptail);
 		cout<<"Continue? (Yes/No): ";
 		cin.ignore();
-		getline(cin,response);	
-	 } while(response.compare("Yes") == 0);
+		getline(cin,response);
+		transform(response.begin(), response.end(), response.begin(), ::tolower);
+	} while(response.compare("yes") == 0);
 	 cout<<"\n";	
 	 askQuestion(trivia, 3);
 	 cout<<"\n*** Thank you for playing the trivia quiz game. Goodbye! ***";
@@ -102,7 +110,7 @@ int askQuestion(TriviaNode* &head, int numToAsk) {
 		cout<<"Answer: ";
 		getline(cin, answer);
 
-		if ((access->answer).compare(answer) == 0) {
+		if ((access->answer).compare((answer)) == 0) {
 			cout<<"Your answer is correct. You receive: "<<access->points<<" points"<<endl;
 			playerPoints += access->points;
 		}
@@ -151,9 +159,3 @@ void test_askQuestion(void) {
 	askQuestion(head,5);
 	cout<<"\n*** End of the Debug Version ***"<<endl;
 }
-
-
-
-
-
-
