@@ -1,12 +1,14 @@
 /**
+* Bernard Moussad
+* Brm0029
+* hw5_brm0029.cpp
+* g++ hw5_brm0029.cpp
+* Uncomment line 30 in order to enable UNIT_TESTING
 * I researched how to implement pointers as nodes 
 * I researched how to make stings lowercase in order to compare them correctly
 * I researched how to perform unit testing using macros
 */
 #include <iostream>
-// #include <cmath>
-// #include <ctime>
-#include <cctype>
 #include <string>
 #include <assert.h>
 using namespace std;
@@ -18,7 +20,6 @@ struct TriviaNode
 	string answer;
 	int	points;
 	TriviaNode* next;
-
 };
 
 int addQuestion(string question, string answer, int points, TriviaNode* &head, TriviaNode* &tail);
@@ -28,12 +29,13 @@ void test_askQuestion(void);
 
 // #define UNIT_TESTING
 #ifdef	UNIT_TESTING
+
 int main() {
 	test_askQuestion();
 }
 
-
 #else
+
 int main() {
 	TriviaNode* trivia = NULL;
 	TriviaNode* tail = NULL;
@@ -65,8 +67,14 @@ int main() {
 	 cout<<"\n";	
 	 askQuestion(trivia, 3);
 	 cout<<"\n*** Thank you for playing the trivia quiz game. Goodbye! ***";
+	 delete trivia;
+	 delete tail;
+	 delete ptrivia;
+	 delete ptail;	
 }
 #endif
+
+
 int addQuestion(string question, string answer, int points, TriviaNode* &head, TriviaNode* &tail) {
 	TriviaNode* q1 = new TriviaNode;
 	if (q1 == NULL) {
