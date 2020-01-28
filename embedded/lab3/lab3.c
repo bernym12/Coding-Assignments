@@ -37,9 +37,9 @@ void count() {
         counter = (counter < 9) ? (counter + 1) : 0;
         counter2 = (counter2 > 0) ? (counter2 - 1) : 9;
     }
-    // GPIOC->ODR &= 0xFFF0;
-    GPIOC ->ODR & 0x0F |= counter;
-    GPIOC ->ODR & 0xF0 |= counter2;
+    GPIOC->ODR &= 0xFF00;
+    GPIOC ->ODR |= counter;
+    GPIOC ->ODR |= counter2 << 4;
 }
 
 int main() {
@@ -48,7 +48,7 @@ int main() {
     counter2 = 9;
     sw1 = 0;
     sw2 = 0;
-    GPIOC->ODR &= 0xFFF0;
+    GPIOC->ODR &= 0xFF00;
     while(1) {
 			sw1 = (GPIOA->IDR & 0x02) ? 1 : 0; //Read GPIOA and mask all but bit 1
         if (sw1 == 1) {
