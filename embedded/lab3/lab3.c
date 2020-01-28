@@ -20,7 +20,7 @@ void PinSetup () {
 void delay () {
  int i,j,n;
  for (i=0; i<20; i++) { //outer loop
-    for (j=0; j<10000; j++) { //inner loop
+    for (j=0; j<9000; j++) { //inner loop
         n = j; //dummy operation for single-step test
     } //do nothing
  }
