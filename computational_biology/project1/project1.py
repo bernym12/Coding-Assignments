@@ -39,10 +39,10 @@ def retrieve_blosum_value(row_letter, col_letter, blosum62):
     for i,row in enumerate(blosum62):
         if (row[0] == row_letter):
             row_num = i
-    
+            break
     return int(blosum62[col_num][row_num])
     
-def needleman_wunsh(needle_wunsch, sequence1, sequence2, blosum62):
+def needleman_wunsch(needle_wunsch, sequence1, sequence2, blosum62):
     for i in range(1, len(sequence1) + 1):
         for j in range(1, len(sequence2) + 1):
             diag = retrieve_blosum_value(sequence1[i-1], sequence2[j-1], blosum62) + needle_wunsch[i-1][j-1]
@@ -55,20 +55,49 @@ def needleman_wunsh(needle_wunsch, sequence1, sequence2, blosum62):
 Horizontal movement = Space in S1
 Vertical movement = Space in S2
 Diagonal movement = Letters across from each other
+So obviously start at bottom right corner and work back.
+So do the reverse calcs and see what was possible and that's where you mustve come from.
+So look at 3 prev, do normal calcs, and whichever equals the value you are actually at has to be where you came from
+
 '''
 def back_track(needle_wunsch, sequence1, sequence2, blosum62):
+    new_sequence1 = []
+    new_sequence2 = []
+    i = len(sequence1)
+    j = len(sequence2)
+    score = needle_wunsch[i][j]
+    while (i > 0 and j > 0):
+        hori = retrieve_blosum_value("*", sequence2[j-1], blosum62) + needle_wunsch[i][j-1]
+        vert = retrieve_blosum_value(sequence1[i-1],"*" , blosum62) + needle_wunsch[i-1][j]
+        if (vert == needle_wunsch[i][j]):
+            new_sequence2.append('-')
+            new_sequence1.append(sequence1[i-1])
+            i -=1
+        elif (hori == needle_wunsch[i][j]):
+            new_sequence1.append('-')
+            new_sequence2.append(sequence2[j-1])
+            j -=1
+        else: 
+            new_sequence1.append(sequence1[i-1])
+            new_sequence2.append(sequence2[j-1])
+            i -=1
+            j -=1
+    concat_string1 = ''.join(map(str, new_sequence1[0:]))
+    concat_string2 = ''.join(map(str, new_sequence2[0:]))
+    # print(concat_string1[::-1])
+    # print('\n'+ concat_string2[::-1])
     print(needle_wunsch)
-    for i in range(1, len(sequence1) + 1):
-        for j in range(1, len(sequence2) + 1):
-            diag = retrieve_blosum_value(sequence1[i-1], sequence2[j-1], blosum62) + needle_wunsch[i-1][j-1]
-            hori = retrieve_blosum_value("*", sequence2[j-1], blosum62) + needle_wunsch[i][j-1]
-            vert = retrieve_blosum_value(sequence1[i-1],"*" , blosum62) + needle_wunsch[i-1][j]
-            needle_wunsch[i][j] = max(diag, vert, hori)
+    print("length of s1:", len(sequence1))
+    print("length of s2:", len(sequence2))
+    print("SCORE:", score)
+    print("length of concat_string1:", len(concat_string1))
+    print("length of concat_string2:", len(concat_string2))
+
 def main():
     needle_wunsch, sequence1, sequence2 = initialize_matrix(sys.argv[1],sys.argv[2])
     blosum62 = populate_blosum62("blosum62.txt")
-    needleman_wunsh(needle_wunsch, sequence1[1], sequence2[1], blosum62)
+    needleman_wunsch(needle_wunsch, sequence1[1], sequence2[1], blosum62)
     back_track(needle_wunsch, sequence1[1], sequence2[1], blosum62)
-    print(needle_wunsch)
+
 if __name__=="__main__":
     main()
