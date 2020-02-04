@@ -59,6 +59,7 @@ void EXTI0_IRQHandler() {
     direction = 1;
     GPIOC->BSRR = 0x0100; //Set PC8=1 to turn on blue LED (in BSRR lower half)
     GPIOC->BSRR = 0x0200 << 16; //Reset PC9=0 to turn off green LED (in BSRR upper half)
+    EXTI->PR |= 0x0001;
     NVIC_ClearPendingIRQ(EXTI0_IRQn);
     __enable_irq();
 }
@@ -68,6 +69,7 @@ void EXTI1_IRQHandler() {
     direction = 0;
     GPIOC->BSRR = 0x0100 << 16; 
     GPIOC->BSRR = 0x0200; //Set PC9 = 1 to turn ON green LED (in BSRR low half)
+    EXTI->PR |= 0x0002;
     NVIC_ClearPendingIRQ(EXTI1_IRQn);
     __enable_irq();
 
