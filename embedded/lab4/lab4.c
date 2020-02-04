@@ -3,8 +3,8 @@
 int counter; 
 int counter2;
 int direction;
-unsigned char sw1; //state of SW1
-unsigned char sw2; //state of SW2
+// unsigned char sw1; //state of SW1
+// unsigned char sw2; //state of SW2
 /*---------------------------------------------------*/
 /* Initialize GPIO pins used in the program */
 /*---------------------------------------------------*/
@@ -17,11 +17,9 @@ void PinSetup () {
     EXT1->RTSR |= 0x03; // line1-0 are rising edge triggered
     EXT1->IMR |= 0x03; //line 1-0 are not masked; therefore they're enabled
     EXTI->PR |= 0x03; //clear pending for EXTI1-0
+    EXTI->PR |= 0x0003; //clear pending for PA1-0
     NVIC_EnableIRQ(EXTI0_IRQn);
-    EXTI->PR |= 0x03; //clear pending for EXTI1-0
-    EXTI->PR |= 0x0003; //clear pending for EXTI1-0
 	NVIC_EnableIRQ(EXTI1_IRQn);
-    // SYSCFG->EXTICR[0] &= 0xF0FF;
     SYSCFG->EXTICR[0] &= 0xFF00
     __enable_irq()
 }
@@ -38,7 +36,7 @@ void delay () {
 }
 
 void count1() {
-    counter = (counter > 0) ? (counter - 1) : 9;
+    counter = (counter < 9) ? (counter + 1) : 0;
     GPIOC->ODR &= 0xFF00;
     if (direction == 0) {
         counter2 = (counter2 < 9) ? (counter2 + 1) : 0;
@@ -81,8 +79,7 @@ int main() {
     counter2 = 9;
     direction = 0;
     GPIOC->ODR &= 0xFF00;
-    while(1) {
-        
+    while(1) {    
         count();
 //        sw1 = (GPIOA->IDR & 0x02) ? 1 : 0; //Read GPIOA and mask all but bit 1
 //        sw2 = (GPIOA->IDR & 0x04) ? 1 : 0; //Read GPIOA and mask all but bit 2
