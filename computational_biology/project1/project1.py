@@ -1,10 +1,19 @@
 import sys
 
+'''
+Reads in text file and stores each line as an element
+within a list
+'''
 def read_file(input_text):
     with open(input_text,'r') as f:
         input = [x.strip('\n') for x in f.readlines()]
     return input
-    
+
+'''
+Concatenates the multiple lines that contain the sequence into a single 
+and returns an array containing the sequence identifier and 
+the single sequence
+'''    
 def join_sequences(sequence_list):
     concat_string = ''.join(map(str, sequence_list[1:]))
     final = []
@@ -12,6 +21,10 @@ def join_sequences(sequence_list):
     final.append(concat_string)
     return final
 
+'''
+intializes the matrix given two input files and the
+algorithm desired: needleman-wunsch or smith-waterman
+'''
 def initialize_matrix(input1, input2, type):
     file1 = read_file(input1)
     file2 = read_file(input2)
@@ -28,6 +41,10 @@ def initialize_matrix(input1, input2, type):
     else:
         return matrix, s1, s2
 
+'''
+Populates the blosum62 matrix given a text file
+that contains the entire blosum62
+'''
 def populate_blosum62(blosum62_file):
     initial = [x.strip(" ").split(" ") for x in read_file(blosum62_file)]
     blosum = []
@@ -37,6 +54,11 @@ def populate_blosum62(blosum62_file):
     blosum[0].insert(0, '')
     return blosum
 
+'''
+Retrieves the value located at the row and 
+column letter index within the blosum62
+and returns that value
+'''
 def retrieve_blosum_value(row_letter, col_letter, blosum62):
     col_num = blosum62[0].index(col_letter)
     row_num = 0
@@ -45,7 +67,11 @@ def retrieve_blosum_value(row_letter, col_letter, blosum62):
             row_num = i
             break
     return int(blosum62[col_num][row_num])
-    
+
+'''
+Populates the matrix argument using the needleman-wunsch algorithm, 
+given the two sequences and blosum62 matrix
+'''
 def needleman_wunsch(matrix, sequence1, sequence2, blosum62):
     for i in range(1, len(sequence1) + 1):
         for j in range(1, len(sequence2) + 1):
@@ -55,6 +81,10 @@ def needleman_wunsch(matrix, sequence1, sequence2, blosum62):
             matrix[i][j] = max(diag, vert, hori)
     return matrix
 
+'''
+Populates the matrix argument using the smith-waterman algorithm, 
+given the two sequences and blosum62 matrix
+'''
 def smith_waterman(matrix, sequence1, sequence2, blosum62):
     for i in range(1, len(sequence1) + 1):
         for j in range(1, len(sequence2) + 1):
@@ -63,15 +93,15 @@ def smith_waterman(matrix, sequence1, sequence2, blosum62):
             vert = retrieve_blosum_value(sequence1[i-1], "*", blosum62) + matrix[i-1][j]
             matrix[i][j] = max(diag, vert, hori, 0)
     return matrix
+
 '''
 Horizontal movement = Space in S1
 Vertical movement = Space in S2
 Diagonal movement = Letters across from each other
-So obviously start at bottom right corner and work back.
-So do the reverse calcs and see what was possible and that's where you mustve come from.
-So look at 3 prev, do normal calcs, and whichever equals the value you are actually at has to be where you came from
+So start at bottom right corner and work back.
+Do the reverse calculations and see what was possible and that's where you must've come from.
+So look at 3 previous elements, do normal calculations, and whichever equals the value you are actually at has to be where you came from
 '''
-
 def back_track(matrix, sequence1, sequence2, blosum62):
     new_sequence1, new_sequence2 = [], []
     i,j = len(sequence1), len(sequence2)
@@ -106,7 +136,13 @@ def back_track(matrix, sequence1, sequence2, blosum62):
     concat_string1 = ''.join(map(str, new_sequence1[0:]))
     concat_string2 = ''.join(map(str, new_sequence2[0:]))
     return concat_string1, concat_string2, score
-    
+
+'''
+Similar to NW backtracking however it begins at the largest number in the matrix
+and stops backtracking once it hits its first zero
+since SW is made for determining local alignements as opposed to global.
+Returns the max score and local alignment
+'''
 def smith_back_track(matrix, sequence1, sequence2, blosum62):
     new_sequence1, new_sequence2 = [], []
     score = max(map(max, matrix))
@@ -131,14 +167,18 @@ def smith_back_track(matrix, sequence1, sequence2, blosum62):
             new_sequence2.append(sequence2[j-1])
             i -= 1
             j -= 1
-    
-    # new_sequence1.append(sequence1[i-1])
-    # new_sequence2.append(sequence2[j-1])
 
     concat_string1 = ''.join(map(str, new_sequence1[0:]))
     concat_string2 = ''.join(map(str, new_sequence2[0:]))
     return concat_string1, concat_string2, score
-    
+
+'''
+Formats the final output by placing | between letters that match,
+* between letters that mistmatch,
+and nothing between letters that across from -.
+Also prints out the max score that is returned by the 
+backtracking algorithms.
+'''
 def format(seq1, seq2, score):
     seq1 = seq1[::-1]
     seq2 = seq2[::-1]
@@ -161,8 +201,10 @@ def format(seq1, seq2, score):
         print(n_seq1[i])
         print(pattern_match[i])
         print(n_seq2[i], '\n\n')
-    print(len(seq1))
-    
+
+'''
+Makes the function calls necessary given the argument inputs
+'''
 def main():
     matrix, sequence1, sequence2 = initialize_matrix(sys.argv[1],sys.argv[2], sys.argv[3])
     blosum62 = populate_blosum62("blosum62.txt")
