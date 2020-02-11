@@ -4,7 +4,8 @@
 int counter1; 
 // int counter2;
 // int direction;
-intr_value = 0;
+int intr_value = 0;
+int disp_intr_value = 0;
 char keys[4][4] = {{0x1,0x2,0x3,0xa}, 
                    {0x4,0x5,0x6,0xb},
                    {0x7,0x8,0x9,0xc},
@@ -79,9 +80,6 @@ void delay (double seconds) {
 /*----------------------------------------------------------*/
 void count() {
     counter1 = (counter1 < 9) ? (counter1 + 1) : 0;
-    GPIOC->ODR &= 0xFFF0; //clears ODR LEDS PC3-0
-    GPIOC ->ODR |= counter1; //Sets ODR LEDS PC3-0 to counter 1
-    delay(1); //delay one second
     // if (direction == 0) {
     //     counter2 = (counter2 < 9) ? (counter2 + 1) : 0;
     // }
@@ -110,11 +108,12 @@ void find_key() {
     for (int i = 0; i < 4; i++) {
         GPIOB->ODR = (0xF << 4); //setting all columns high
         GPIOB->ODR = GPIOB->ODR ^(1<<(4+i)); //clearing each individual column
-        delay(.1);
+        delay(0.01);
         for (int j = 0; j < 4; j++) {
             if (!(GPIOB->IDR & (1 << j))) {
                 loc.col = i;
                 loc.row = j;
+                break;
             }
         }
     }
@@ -127,16 +126,28 @@ void EXTI1_IRQHandler() {
     // direction = 0; //set direction for counter2 to the forwards direction.
     // GPIOC->ODR ^= 0x0200; //Set PC9 = 1 to turn ON green LED (in BSRR lower half)
     find_key();
+    disp_intr_value = 5;
     intr_value = keys[loc.col][loc.row];
-    GPIOC->ODR &= 0xFFF0;
-    GPIOC->ODR |= intr_value; 
-    delay(5);   
     GPIOC->ODR &= 0xFFF0;
     EXTI->PR |= 0x0002;
     NVIC_ClearPendingIRQ(EXTI1_IRQn);
     __enable_irq();
 }
 
+void display() {
+    GPIOC->ODR &= 0xFFF0;
+    if (disp_intr_value) 
+    {
+        GPIOC->ODR |= intr_value;//Sets ODR LEDS PC3-0 to  the keypad value
+        delay(1);
+        disp_intr_value--;
+    }
+    else {
+        // GPIOC->ODR &= 0xFFF0; //clears ODR LEDS PC3-0
+        GPIOC ->ODR |= counter1; //Sets ODR LEDS PC3-0 to counter 1
+        delay(1); //delay one second
+    }
+}
 int main() {
     PinSetup();
     interrupt_setup();
@@ -146,5 +157,6 @@ int main() {
     GPIOC->ODR &= 0xFF00;
     while(1) {    
         count();
+        display();
     }
 }
