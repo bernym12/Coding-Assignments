@@ -2,18 +2,17 @@
 
 /* Define global variables */
 int counter1; 
-// int counter2;
-// int direction;
-int intr_value = 0;
+int check = 0;
+int intr_value = 0xFF;
 int disp_intr_value = 0;
 char keys[4][4] = {{0x1,0x2,0x3,0xa}, 
                    {0x4,0x5,0x6,0xb},
                    {0x7,0x8,0x9,0xc},
                    {0xf,0x0,0xe,0xd}};
-struct Location {
+typedef struct locate {
     int col;
     int row;
-} loc;
+} locate;
 /*---------------------------------------------------*/
 /* Initialize GPIO pins used in the program */
 /*---------------------------------------------------*/
@@ -50,23 +49,31 @@ void PinSetup () {
 /* Initialize interrupts used in the program */
 /*---------------------------------------------------*/
 void interrupt_setup() {
-    EXTI->FTSR |= 0x002; // line1-0 are rising edge triggered
-    EXTI->IMR |= 0x02; //line 1-0 are not masked; therefore they're enabled
-    EXTI->PR |= 0x02; //clear pending for EXTI1-0
-    // EXTI->PR |= 0x0003; //clear pending for PA1-0
-    // NVIC_EnableIRQ(EXTI0_IRQn); 
+    EXTI->FTSR |= 0x03; // line1-0 are rising edge triggered
+    EXTI->IMR |= 0x03; //line 1-0 are not masked; therefore they're enabled
+    EXTI->PR |= 0x03; //clear pending for EXTI1-0
+    EXTI->PR |= 0x0003; //clear pending for PA1-0
     NVIC_EnableIRQ(EXTI1_IRQn);
-    // SYSCFG->EXTICR[0] &= 0xFF00;
+    SYSCFG->EXTICR[0] &= 0xFF00;
     __enable_irq();
 }
 
 /*----------------------------------------------------------*/
 /* Delay function - do nothing for about 1 seconds */
 /*----------------------------------------------------------*/
-void delay (double seconds) {
+void delay () {
     int i,j,n;
     for (i=0; i<20; i++) { //outer loop
-        for (j=0; j<20000*seconds; j++) { //inner loop
+        for (j=0; j<20000; j++) { //inner loop
+            n = j; //dummy operation for single-step test
+        } //do nothing
+    }
+}
+
+void small_delay () {
+    int i,j,n;
+    for (i=0; i<20; i++) { //outer loop
+        for (j=0; j<20; j++) { //inner loop
             n = j; //dummy operation for single-step test
         } //do nothing
     }
@@ -74,86 +81,64 @@ void delay (double seconds) {
 
 /*----------------------------------------------------------*/
 /*Counter: if counter1 = 9, roll over to 0; otherwise increment count by 1*/
-/*Counter2: if direction = 0, counter2 functions as counter1.*/
-/*If direction = 0, counter2 counts down instead. It also counts at half */
-/* the rate of counter1 due to the placement of the delays and updates*/
 /*----------------------------------------------------------*/
 void count() {
     counter1 = (counter1 < 9) ? (counter1 + 1) : 0;
-    // if (direction == 0) {
-    //     counter2 = (counter2 < 9) ? (counter2 + 1) : 0;
-    // }
-    // else {    
-    //     counter2 = (counter2 > 0) ? (counter2 - 1) : 9;
-    // }
-    // GPIOC ->ODR |= counter2 << 4; //Sets ODR LEDS PC7-4 to counter2
-    // counter1 = (counter1 < 9) ? (counter1 + 1) : 0;
-    // GPIOC->ODR &= 0xFFF0;//clears ODR LEDS PC3-0
-    // GPIOC ->ODR |= counter1 ; //Sets ODR LEDS PC3-0 to counter 1
-    // delay(); //delay half a second
 }
 
-//Interrupt called when PA0 (User Button) is pressed
-// void EXTI0_IRQHandler() {
-//     __disable_irq();
-//     direction = 1; //set direction for counter2 to the reverse direction.
-//     GPIOC->ODR ^= 0x0100; //Set PC8=1 to turn on blue LED (in BSRR lower half)  
-//     EXTI->PR |= 0x0001;
-//     NVIC_ClearPendingIRQ(EXTI0_IRQn);
-//     __enable_irq();
-// }
-void find_key() {
+
+locate find_key() {
+    locate loc;
     loc.col = 0;
     loc.row = 0;
     for (int i = 0; i < 4; i++) {
         GPIOB->ODR = (0xF << 4); //setting all columns high
         GPIOB->ODR = GPIOB->ODR ^(1<<(4+i)); //clearing each individual column
-        delay(0.01);
+        small_delay();
         for (int j = 0; j < 4; j++) {
-            if (!(GPIOB->IDR & (1 << j))) {
+            int test = GPIOB->IDR;
+            if (!(test & (1 << (j)))) {
                 loc.col = i;
                 loc.row = j;
-                break;
+                return loc;
             }
         }
     }
-
+    loc.col = -1;
+    loc.row = -1;
+    return loc;
 }
 //Interrupt called when PA1 (Waveforms Button) is pressed
 void EXTI1_IRQHandler() {
     __disable_irq();
-
-    // direction = 0; //set direction for counter2 to the forwards direction.
-    // GPIOC->ODR ^= 0x0200; //Set PC9 = 1 to turn ON green LED (in BSRR lower half)
-    find_key();
-    disp_intr_value = 5;
-    intr_value = keys[loc.col][loc.row];
-    GPIOC->ODR &= 0xFFF0;
+    check++;
+    locate loc = find_key();
+    if (loc.col != -1 && loc.row != -1) {
+        disp_intr_value = 5;
+        intr_value = keys[loc.row][loc.col];
+    }
     EXTI->PR |= 0x0002;
     NVIC_ClearPendingIRQ(EXTI1_IRQn);
     __enable_irq();
 }
 
 void display() {
-    GPIOC->ODR &= 0xFFF0;
+    GPIOB->ODR &= (~(0xF) << 4);
     if (disp_intr_value) 
     {
-        GPIOC->ODR |= intr_value;//Sets ODR LEDS PC3-0 to  the keypad value
-        delay(1);
+        GPIOC->ODR = intr_value;//Sets ODR LEDS PC3-0 to  the keypad value
+        delay();
         disp_intr_value--;
     }
     else {
-        // GPIOC->ODR &= 0xFFF0; //clears ODR LEDS PC3-0
-        GPIOC ->ODR |= counter1; //Sets ODR LEDS PC3-0 to counter 1
-        delay(1); //delay one second
+        GPIOC->ODR = counter1; //Sets ODR LEDS PC3-0 to counter 1
+        delay(); //delay one second
     }
 }
 int main() {
     PinSetup();
     interrupt_setup();
     counter1 = 0;
-    counter2 = 9;
-    direction = 0;
     GPIOC->ODR &= 0xFF00;
     while(1) {    
         count();
