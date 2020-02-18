@@ -7,7 +7,7 @@
 * 
 * Initialize timer to 0.0
 /* Define global variables */
-#define PRESCALE (uint32_t)  34
+#define PRESCALE (uint32_t)  104
 #define ARR (uint32_t)  1999
 int ones; 
 int tens;
@@ -64,29 +64,22 @@ void interrupt_setup() {
     EXTI->PR |= 0x0003; //clear pending for PA1-0
     NVIC_EnableIRQ(EXTI1_IRQn);
     SYSCFG->EXTICR[0] &= 0xFF00;
-    __enable_irq(); //enables interrupts globally
 }
 
 void timer_setup() {
     // TIM10->CNT; //TIM10 counter register
-    TIM10->DIER |= TIM_DIER_UIE; //DMA interrupt enable register
     RCC->APB2ENR |= RCC_APB2ENR_TIM10EN; //enable clock for timer 10    
+    TIM10->DIER |= TIM_DIER_UIE; //DMA interrupt enable register
     NVIC_EnableIRQ(TIM10_IRQn);
+    NVIC_SetPriority(TIM10_IRQn, 0);
     TIM10->CR1 |= TIM_CR1_CEN; //TIM10 control register enables timer to begin counting
     TIM10->PSC = PRESCALE; //TIM10 prescale register
     TIM10->ARR = ARR; //TIM10 autoreload register
+    __enable_irq(); //enables interrupts globally
 }
 /*----------------------------------------------------------*/
 /* Delay function - do nothing for about 1 seconds */
 /*----------------------------------------------------------*/
-void delay () {
-    int i,j,n;
-    for (i=0; i<20; i++) { //outer loop
-        for (j=0; j<17600; j++) { //inner loop
-            n = j; //dummy operation for single-step test
-        } //do nothing
-    }
-}
 
 void small_delay () {
     int i,j,n;
@@ -157,21 +150,19 @@ void EXTI1_IRQHandler() {
         intr_value = keys[loc.row][loc.col];
     }
 
-    if (intr_value == 0x01 && timr_cnt == 1) {
-        timr_cnt = 0;
-        TIM10->CR1 |= ~TIM_CR1_CEN;
+    if (intr_value == 0x0a) {
+        timr_cnt ^= 0x01;
+        TIM10->CR1 ^= TIM_CR1_CEN;
     }
-    else if (intr_value == 0x01 && timr_cnt == 0) {
-        timr_cnt = 1;
-        TIM10->CR1 |= TIM_CR1_CEN;
-    }
-    else if (intr_value == 0x02 && timr_cnt == 0) {
+
+    else if (intr_value == 0x0b && timr_cnt == 0) {
         ones = 0;
         tens = 0;
+		display();
         TIM10->CNT = 0; //resets counter register
     }
-    GPIOB->ODR &= ~(0xF0);
-    EXTI->PR |= EXTI_PR_PR1;//0x0002;
+
+    EXTI->PR |= EXTI_PR_PR1;
     NVIC_ClearPendingIRQ(EXTI1_IRQn);
     __enable_irq();
 }
@@ -182,10 +173,11 @@ void EXTI1_IRQHandler() {
  */
 void TIM10_IRQHandler() {
     __disable_irq();
-    if (TIM10->SR & 0x01 == 0x01) {
+    if ((TIM10->SR & 0x01) == 0x01) {
         count();
+        display();
+        TIM10->SR &= ~TIM_SR_UIF;
     }
-    TIM10->SR ^= TIM_SR_UIF;
     NVIC_ClearPendingIRQ(TIM10_IRQn);
     __enable_irq();
 }
@@ -194,9 +186,8 @@ void TIM10_IRQHandler() {
  * of the GPIOC ODR
  */
 void display() {
-    GPIOC->ODR = ones << 4; //Sets ODR LEDS PC7-4 to ones place
-    GPIOC->ODR = tens; //Sets ODR LEDS PC3-0 to tens
-    // delay(); //delay one second
+	GPIOB->ODR &= ~(0xF0);
+    GPIOC->ODR =  tens + (ones << 4); //Sets ODR LEDS PC7-0 
 }
 
 int main() {
@@ -206,7 +197,5 @@ int main() {
     ones = 0;
     tens = 0;
     GPIOC->ODR &= 0xFF00;
-    while(1) {    
-        display();
-    }
+    while(1);
 }
