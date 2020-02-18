@@ -168,6 +168,7 @@ void EXTI1_IRQHandler() {
     else if (intr_value == 0x02 && timr_cnt == 0) {
         ones = 0;
         tens = 0;
+        TIM10->CNT = 0; //resets counter register
     }
     GPIOB->ODR &= ~(0xF0);
     EXTI->PR |= EXTI_PR_PR1;//0x0002;
