@@ -7,12 +7,12 @@
 * 
 * Initialize timer to 0.0
 /* Define global variables */
+#define PRESCALE (uint32_t)  34
+#define ARR (uint32_t)  1999
 int ones; 
 int tens;
-int check = 0;
 int timr_cnt = 0;
 int intr_value = 0xFF;
-int disp_intr_value = 0;
 char keys[4][4] = {{0x1,0x2,0x3,0xa}, 
                    {0x4,0x5,0x6,0xb},
                    {0x7,0x8,0x9,0xc},
@@ -51,29 +51,30 @@ void pin_setup () {
     GPIOB->PUPDR |= (0x00000055); //Set bits to 01 for PUPDR pull-up Pb3-0 to maintain logic 1
     
     GPIOB->ODR &= ~(0xF0); //Clear PB7-4
+    GPIOC->BSRR = 0x00FF << 16; //Clear PC7-0
 }
 
 /*---------------------------------------------------*/
 /* Initialize interrupts used in the program */
 /*---------------------------------------------------*/
 void interrupt_setup() {
-    EXTI->FTSR |= 0x03; // line1-0 are falling edge triggered
-    EXTI->IMR |= 0x03; //line 1-0 are not masked; therefore they're enabled
+    EXTI->FTSR |= EXTI_FTSR_TR1;//0x03; // line1-0 are falling edge triggered
+    EXTI->IMR |= EXTI_IMR_MR1;//0x03; //line 1-0 are not masked; therefore they're enabled
     EXTI->PR |= 0x03; //clear pending for EXTI1-0
     EXTI->PR |= 0x0003; //clear pending for PA1-0
     NVIC_EnableIRQ(EXTI1_IRQn);
     SYSCFG->EXTICR[0] &= 0xFF00;
+    __enable_irq(); //enables interrupts globally
 }
 
 void timer_setup() {
-    TIM10->CNT; //TIM10 counter register
-    TIM10->PSC = 0; //TIM10 prescale register
-    TIM10->ARR = 209700; //TIM10 autoreload register
+    // TIM10->CNT; //TIM10 counter register
     TIM10->DIER |= TIM_DIER_UIE; //DMA interrupt enable register
-    NVIC_EnableIRQ(TIM10_IRQn);
     RCC->APB2ENR |= RCC_APB2ENR_TIM10EN; //enable clock for timer 10    
-    __enable_irq(); //enables interrupts globally
+    NVIC_EnableIRQ(TIM10_IRQn);
     TIM10->CR1 |= TIM_CR1_CEN; //TIM10 control register enables timer to begin counting
+    TIM10->PSC = PRESCALE; //TIM10 prescale register
+    TIM10->ARR = ARR; //TIM10 autoreload register
 }
 /*----------------------------------------------------------*/
 /* Delay function - do nothing for about 1 seconds */
@@ -97,11 +98,13 @@ void small_delay () {
 }
 
 /*----------------------------------------------------------*/
-/*Counter: if counter1 = 9, roll over to 0; otherwise increment count by 1*/
+/*If tenths place is 9 and ones < 9, then increment ones place*/
+/*If tenths place is 9 and ones == 9, then reset ones place*/
+/*If tenths place < 9, increment it. Otherwise, set it equal to 0*/
 /*----------------------------------------------------------*/
-void count(int &ones, int &tens) {
+void count() {
     if (tens == 9 && ones < 9) {
-            (ones + 1);
+            ones = (ones + 1);
     }
     else if (tens == 9 && ones == 9) {
         ones = 0;
@@ -110,6 +113,14 @@ void count(int &ones, int &tens) {
 }
 
 
+/**
+ * Drives all columns to 1
+ * Then sets each of them to 0
+ * Checks if a row is set to 0
+ * If so, it saves i and j in col and row respectively
+ * Otherwise continues through the loops
+ * If not found, returns -1,-1 
+ */
 locate find_key() {
     locate loc;
     loc.col = -1;
@@ -129,13 +140,20 @@ locate find_key() {
     }
     return loc;
 }
-//Interrupt called when PA1 (Waveforms Button) is pressed
+
+/**
+ * Interrupt is called when a key is pressed
+ * Locates the key that was pressed
+ * Saves that value
+ * If the key was the 1 key, then the timer is stopped/started
+ * depending on the state of the timer
+ * If the key the 2 key, then the timer is reset only if it is paused
+ */
 void EXTI1_IRQHandler() {
     __disable_irq();
     check++;
     locate loc = find_key();
     if (loc.col != -1 && loc.row != -1) {
-        disp_intr_value = 5;
         intr_value = keys[loc.row][loc.col];
     }
 
@@ -151,23 +169,30 @@ void EXTI1_IRQHandler() {
         ones = 0;
         tens = 0;
     }
-    EXTI->PR |= 0x0002;
+    GPIOB->ODR &= ~(0xF0);
+    EXTI->PR |= EXTI_PR_PR1;//0x0002;
     NVIC_ClearPendingIRQ(EXTI1_IRQn);
     __enable_irq();
 }
 
+/**
+ * Based on settings, should interrupt every 0.1 s
+ * Meant to call the count function on each interrupt
+ */
 void TIM10_IRQHandler() {
     __disable_irq();
     if (TIM10->SR & 0x01 == 0x01) {
-        count(ones,tens);
+        count();
     }
-    TIM10->SR &= ~TIM_SR_UIF;
+    TIM10->SR ^= TIM_SR_UIF;
     NVIC_ClearPendingIRQ(TIM10_IRQn);
     __enable_irq();
 }
-
+/**
+ * Outputs the ones and tenths place in their corresponding positions
+ * of the GPIOC ODR
+ */
 void display() {
-    GPIOB->ODR &= (~(0xF) << 4);
     GPIOC->ODR = ones << 4; //Sets ODR LEDS PC7-4 to ones place
     GPIOC->ODR = tens; //Sets ODR LEDS PC3-0 to tens
     // delay(); //delay one second
