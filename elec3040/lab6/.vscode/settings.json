@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "*.xdc": "vhdl",
+        "stm32l1xx.h": "c"
+    }
+}
