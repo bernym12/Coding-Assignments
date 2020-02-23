@@ -57,25 +57,68 @@ def calc_gain(learning_fasta, learning_sa, total_entropy):
         attr_entr[key] = calc_entropy(learning_fasta, learning_sa, prob_attr[key])#-prob_attr[key]*math.log2(prob_attr[key]) - (1-prob_attr[key])*math.log2((1-prob_attr[key]))
         attr_gains[key] = total_entropy - attr_entr[key]
     # print(attr_gains)
-    print(max(attr_gains, key = attr_gains.get))
     return attr_gains, prob_attr
-   
-def construct_tree(tree, attr_gains, prob_attr):
-    tree = {}
+'''
+Select the attribute with the most gain
+If protein has that attribute, output buried
+Else, insert attribute with second most gain,
+and keep on with that
+Can recursively call this by passing in a tree
+The remaining charactersitics that haven't been used
+''' 
+def construct_tree(tree, attr_gains):
     root = max(attr_gains, key = attr_gains.get)
     if (root not in tree):
-        tree[root] = (max(attr_gains, key = attr_gains.get),"B")
-    else:
-        tree[root] = (max(attr_gains, key = attr_gains.get))
-    return construct_tree(tree, attr_gains, prob_attr)
+        if (len(attr_gains) == 1):
+            tree[root] = ("E")
+            return(tree)      
+        attr_gains.pop(root)
+        tree[root] = ("B",max(attr_gains, key = attr_gains.get))      
+
+    return construct_tree(tree, attr_gains)
+def save_tree(tree):
+    with open("tree.pickle", 'wb') as f:
+        pickle.dump(tree, f)
+
+def predict_output(tree):
+    testing_fasta = []
+    testing_sa = []
+    fasta_files = os.listdir("fasta")
+    sa_files = os.listdir("sa")
+
+    start = int(.75*len(fasta_files)) + 1
+    for i in range(start, len(fasta_files)):
+        testing_fasta.append(read_file("fasta/" + fasta_files[i])[1])
+    for i in range(start, len(fasta_files)):
+        testing_sa.append(read_file("sa/" + sa_files[i])[1])
+    testing_fasta = ''.join(map(str, testing_fasta[1:]))
+    testing_sa = ''.join(map(str, testing_sa[1:]))
+
+    potential_sa = []
+    for character in testing_fasta:
+        for node in tree:
+            if character in attributes[node]:
+                potential_sa.append(tree[node][0])
+  
+    potential_sa = ''.join(map(str, potential_sa[1:]))
+    match = 0
+    for character in (testing_sa):
+        # print(character)
+        if character == potential_sa[i]:
+            # print(character)
+            match += 1
+    print((match/len(potential_sa)))
+    # print(potential_sa)
+
 
 def main():
     learning_fasta, learning_sa, buried = populate_training_lists()
     total_entropy = calc_entropy(learning_fasta, learning_sa, buried)
-    print(total_entropy)
     attr_gains, prob_attr = calc_gain(learning_fasta, learning_sa, total_entropy)
     tree = {}
-    # construct_tree(attr_gains, prob_attr, tree)
+    construct_tree(tree, attr_gains)
+    predict_output(tree)
+    save_tree(tree)
 
 if __name__ == "__main__":
     main()
