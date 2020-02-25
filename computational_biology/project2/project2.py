@@ -33,7 +33,28 @@ def populate_training_lists():
     learning_fasta = ''.join(map(str, learning_fasta[1:]))
     learning_sa = ''.join(map(str, learning_sa[1:]))
     buried = learning_sa.count("B")
-    return learning_fasta, learning_sa, buried
+    proteins = {}
+    for i, protein in enumerate(learning_fasta):
+        if learning_sa[i] == 'B':
+            if protein not in proteins:
+                proteins[protein] = '1'
+            else:
+                proteins[protein] += ('1')
+        else:
+            if protein not in proteins:
+                proteins[protein] = '0'
+            else:
+                proteins[protein] += ('0')
+
+    count_for_attr = {}
+    for protein in learning_fasta:
+        for attr in attributes:
+            if protein in attributes[attr]:
+                if attr not in count_for_attr:
+                    count_for_attr[attr] = 1
+                else:
+                    count_for_attr[attr] += 1
+    return learning_fasta, learning_sa, buried, count_for_attr,proteins
 
 def output_given_attr(attr,learning_fasta,learning_sa):
     count_for_attr = {'B': 0, 'E': 0}
@@ -44,28 +65,59 @@ def output_given_attr(attr,learning_fasta,learning_sa):
             count_for_attr['E'] += 1
     return max(count_for_attr, key=count_for_attr.get)
 
+def split_attributes(sequence, attribute):
+    match_list = []
+    diff_list = []
+    for char in sequence:
+        if char in attributes[attribute]:
+            match_list.append(char)
+        else:
+            diff_list.append(char)
+    return match_list, diff_list
+    
 
 
-def calc_entropy(learning_fasta, learning_sa, attribute):
-    prob_attribute = attribute / len(learning_sa)
-    entropy = -prob_attribute*math.log2(prob_attribute) - (1-prob_attribute)*math.log2((1-prob_attribute))
+
+def calc_entropy(sequence, attribute_count):
+    if (attribute_count == 0):
+        entropy = -(1)*math.log(1,2)
+        return entropy
+    prob_attribute = attribute_count / len(sequence)
+    if (prob_attribute == 0):
+        entropy = -(1-prob_attribute)*math.log((1-prob_attribute),2)
+    elif (prob_attribute == 1):
+        entropy = -prob_attribute*math.log(prob_attribute,2)
+    else:
+        entropy = -prob_attribute*math.log(prob_attribute,2) - (1-prob_attribute)*math.log((1-prob_attribute),2)
     return entropy
-     
-def calc_gain(learning_fasta, learning_sa, total_entropy):
-    prob_attr = {}
-    for attribute in attributes:
-        for protein in learning_fasta:
-            if protein in attributes[attribute]:
-                if attribute in prob_attr:
-                    prob_attr[attribute] += 1
-                else:
-                    prob_attr[attribute] = 1
-    attr_entr = {}
+
+'''
+Really need to pass in the number of times a protein falls under a category
+'''
+# def calc_gain(learning_fasta, learning_sa, total_entropy, count_for_attr):
+#     attr_entr = {}
+#     attr_gains = {}
+#     for key in count_for_attr:
+#         attr_entr[key] = calc_entropy(learning_sa, count_for_attr[key])
+#         attr_gains[key] = total_entropy - attr_entr[key]
+#     return attr_gains
+
+def calc_gain(sequence, attr, total_entropy):
+    attribute_count = 0
+    for protein in sequence:
+        if protein in attributes[attr]:
+            attribute_count += 1
+    gain = total_entropy - calc_entropy(sequence, attribute_count)
+    return gain
+
+def gain_dict(sequence, total_entropy):
     attr_gains = {}
-    for key in prob_attr:
-        attr_entr[key] = calc_entropy(learning_fasta, learning_sa, prob_attr[key])
-        attr_gains[key] = total_entropy - attr_entr[key]
+    for attr in attributes:
+       attr_gains[attr] = calc_gain(sequence, attr, total_entropy)
+       if (attr_gains[attr] is None):
+           attr_gains.pop(attr)
     return attr_gains
+
 '''
 Select the attribute with the most gain
 If protein has that attribute, output buried
@@ -74,16 +126,22 @@ and keep on with that
 Can recursively call this by passing in a tree
 The remaining charactersitics that haven't been used
 ''' 
-def construct_tree(tree, attr_gains,learning_fasta, learning_sa):
+def construct_tree(tree, attr_gains, sequence, total_entropy):
     root = max(attr_gains, key = attr_gains.get)
     if (root not in tree):
-        if (len(attr_gains) == 1):
-            tree[root] = (output_given_attr(root,learning_fasta,learning_sa))
-            return tree      
-        attr_gains.pop(root)
-        tree[root] = (output_given_attr(root,learning_fasta,learning_sa),max(attr_gains, key = attr_gains.get))      
+        new_gains_common = gain_dict(split_attributes(sequence,root)[0],total_entropy)
+        new_gains_diff = gain_dict(split_attributes(sequence,root)[1],total_entropy)
+        if (root in new_gains_common):
+            new_gains_common.pop(root)
+        if (root in new_gains_diff):
+            new_gains_diff.pop(root)
+        first = max(new_gains_common, key = new_gains_common.get)
+        second = max(new_gains_diff, key = new_gains_diff.get)
+        tree[root] = (first,second)
+        construct_tree(tree, new_gains_common, split_attributes(sequence,root)[0], total_entropy)
+        construct_tree(tree, new_gains_diff, split_attributes(sequence,root)[1], total_entropy)
 
-    return construct_tree(tree, attr_gains, learning_fasta, learning_sa)
+    return tree
 
 def save_tree(tree):
     with open("tree.pickle", 'wb') as f:
@@ -132,23 +190,25 @@ def evaluate_performance(testing_sa, potential_sa):
     precision = true_positive/(true_positive+false_positive)
     recall = true_positive/(true_positive+false_negative)
     f1 = 2*(precision*recall)/(precision+recall)
-
+    # print("Constructed SA: ", potential_sa)
     print("Percent: ", percentage/(len(testing_sa)))
     print("Precision: ", precision)
     print("Recall: ", recall)
     print("F1: ", f1)
 
+
 def main():
-    learning_fasta, learning_sa, buried = populate_training_lists()
-    total_entropy = calc_entropy(learning_fasta, learning_sa, buried)
-    attr_gains = calc_gain(learning_fasta, learning_sa, total_entropy)
-  
+    learning_fasta, learning_sa, buried, count_for_attr, proteins = populate_training_lists()
+    total_entropy = calc_entropy(learning_sa, buried)
+    attr_gains = gain_dict(learning_fasta, total_entropy)
+    # split_attributes(learning_fasta, 'proline')
     tree = {}
-    construct_tree(tree, attr_gains, learning_fasta, learning_sa)
+    construct_tree(tree, attr_gains, learning_fasta, total_entropy)    
     save_tree(tree)
     testing_sa, potential_sa = predict_output(tree)
-    evaluate_performance(testing_sa, potential_sa)
+    # evaluate_performance(testing_sa, potential_sa)
     print(tree)
+
 
 if __name__ == "__main__":
     main()
