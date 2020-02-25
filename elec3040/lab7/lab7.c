@@ -7,8 +7,10 @@
 * 
 * Initialize timer to 0.0
 /* Define global variables */
-#define PRESCALE (uint32_t)  104
-#define ARR (uint32_t)  1999
+#define PRESCALE (uint32_t)  104 //increment cnt reg every 105 clock pulses = 104+1
+#define ARR (uint32_t)  1999 //overflow cnt reg at 2000 = 1999+1
+#define CCR (uint32_t)  2000 //tbd
+#define ARR_C
 int ones; 
 int tens;
 int timr_cnt = 0;
@@ -44,6 +46,11 @@ void pin_setup () {
     GPIOC->MODER |= (0x00005555); /*Set PC7-0 to output mode*/
     GPIOA->MODER &= ~(0x000000C); /* Clear PA1 for input mode */
 
+    GPIOA->MODER &= ~(0x00003000); //Clear PA6 mode
+    GPIOA->MODER |= (0x00002000); //PA6 AF Mode
+    GPIOA->AFR[0] &= ~(0x0F000000); //clear AFRL6
+    GPIOA->AFR[0] |= (0x03000000); //PA6=AF3
+
     GPIOB->MODER &= ~(0x000FFFF); /* Clear bits PB7-0 */
     GPIOB->MODER |= 0x00005500; /*Set bits for PB7-4 for output mode */
     
@@ -75,6 +82,11 @@ void timer_setup() {
     TIM10->CR1 |= TIM_CR1_CEN; //TIM10 control register enables timer to begin counting
     TIM10->PSC = PRESCALE; //TIM10 prescale register
     TIM10->ARR = ARR; //TIM10 autoreload register
+    TIM10->CCMR1 &= ~0x70;
+    TIM10->CCMR1 |= 0x60;
+    TIM10->CCER &= ~0x03;
+    TIM10->CCER |= 0x01;
+    TIM10->CR1 = TIM_CR1_CEN;
     __enable_irq(); //enables interrupts globally
 }
 /*----------------------------------------------------------*/
@@ -84,7 +96,7 @@ void timer_setup() {
 void small_delay () {
     int i,j,n;
     for (i=0; i<20; i++) { //outer loop
-        for (j=0; j<20; j++) { //inner loop
+        for (j=0; j<7200; j++) { //inner loop
             n = j; //dummy operation for single-step test
         } //do nothing
     }
@@ -145,21 +157,24 @@ locate find_key() {
 void EXTI1_IRQHandler() {
     __disable_irq();
     locate loc = find_key();
+    small_delay();
     if (loc.col != -1 && loc.row != -1) {
         intr_value = keys[loc.row][loc.col];
+        TIM10->CCR1 = (TIM10->ARR+1)*(intr_value*10)/100;
+        GPIOC->ODR = intr_value
     }
+	GPIOB->ODR &= ~(0xF0);
+    // if (intr_value == 0x0a) {
+    //     // timr_cnt ^= 0x01;
+    //     // TIM10->CR1 ^= TIM_CR1_CEN;
+    // }
 
-    if (intr_value == 0x0a) {
-        timr_cnt ^= 0x01;
-        TIM10->CR1 ^= TIM_CR1_CEN;
-    }
-
-    else if (intr_value == 0x0b && timr_cnt == 0) {
-        ones = 0;
-        tens = 0;
-		display();
-        TIM10->CNT = 0; //resets counter register
-    }
+    // else if (intr_value == 0x0b && timr_cnt == 0) {
+    //     ones = 0;
+    //     tens = 0;
+	// 	display();
+    //     TIM10->CNT = 0; //resets counter register
+    // }
 
     EXTI->PR |= EXTI_PR_PR1;
     NVIC_ClearPendingIRQ(EXTI1_IRQn);
@@ -170,22 +185,27 @@ void EXTI1_IRQHandler() {
  * Based on settings, should interrupt every 0.1 s
  * Meant to call the count function on each interrupt
  */
-void TIM10_IRQHandler() {
-    __disable_irq();
-    if ((TIM10->SR & 0x01) == 0x01) {
-        count();
-        display();
-        TIM10->SR &= ~TIM_SR_UIF;
-    }
-    NVIC_ClearPendingIRQ(TIM10_IRQn);
-    __enable_irq();
-}
+// void TIM10_IRQHandler() {
+//     __disable_irq();
+//     if ((TIM10->SR & 0x01) == 0x01) {
+//         count();
+//         display();
+//         TIM10->SR &= ~TIM_SR_UIF;
+//     }
+//     NVIC_ClearPendingIRQ(TIM10_IRQn);
+//     __enable_irq();
+// }
+/**
+ * T = waveform period T1 +T2 constant
+ * T1 = pulse duration
+ * Duty Cycle = T1/T
+ * Vavg = Vmax * Duty Cycle
+ * CCR = Caputrue Compare Register
 /**
  * Outputs the ones and tenths place in their corresponding positions
  * of the GPIOC ODR
  */
 void display() {
-	GPIOB->ODR &= ~(0xF0);
     GPIOC->ODR =  tens + (ones << 4); //Sets ODR LEDS PC7-0 
 }
 
@@ -196,5 +216,6 @@ int main() {
     ones = 0;
     tens = 0;
     GPIOC->ODR &= 0xFF00;
+    TIM10->CCR1 = (TIM10->ARR / 2);
     while(1);
 }
