@@ -1,6 +1,6 @@
 import sys
 import os
-from math import sqrt
+from math import sqrt,pi,exp
 import pickle
 
 '''
@@ -37,8 +37,6 @@ def read_pssm_file(pssm_file):
 
 '''
 First, do the windowing for each file and make a single matrix that has the 100 attr.
-After we do that, then combine each of this matrices into a single one.
-Then calculate the mean and std. dev for each column xi
 If looking at the first row, then append two rows of 20 -1's in the front.
 If looking at second row, then only append one row of 20 -1's.
 If looking at the next to last row, append one row of 20 -1's to the end of it.
@@ -47,7 +45,7 @@ Then create a tuple pair that contains the row paired with the ss value for that
 '''
 
 # TODO: REALLY NEEDS TO BE REDUCED
-def init_pssm_matrix(pssm_file, ss_file):
+def init_pssm_matrix(pssm_file, ss_file, train):
     matrix = []
     initial = read_pssm_file(pssm_file)
     ss = read_file(ss_file)[1]
@@ -85,7 +83,10 @@ def init_pssm_matrix(pssm_file, ss_file):
             row_attr.extend(initial[i])
             row_attr.extend(initial[i+1])
             row_attr.extend(initial[i+2])
-        matrix.append((row_attr,ss[i]))
+        if (train):
+            matrix.append((row_attr,ss[i]))
+        else:
+            matrix.append(row_attr)
     return matrix
 
 '''
@@ -93,50 +94,107 @@ Gets the first 75% of the files
 Gets the matrix for each one
 Then concats these matrices into a single matrix
 '''
+def retrieve_training_data():
+    total_training_data = []
+    ss_files = os.listdir("ss")
+    pssm_files = os.listdir("pssm")
+    for i in range(int(0.75*len(pssm_files))):
+        initial = init_pssm_matrix("pssm/" + pssm_files[i], "ss/" + ss_files[i], True)
+        total_training_data.extend(initial)
+    return total_training_data
+
 def retrieve_test_data():
     total_test_data = []
     ss_files = os.listdir("ss")
     pssm_files = os.listdir("pssm")
-    for i in range(int(0.75*len(pssm_files))):
-        initial = init_pssm_matrix("pssm/" + pssm_files[i], "ss/" + ss_files[i])
+    for i in range(int(0.75*len(pssm_files))+1,len(pssm_files)):
+        initial = init_pssm_matrix("pssm/" + pssm_files[i], "ss/" + ss_files[i], False)
         total_test_data.extend(initial)
     return total_test_data
 
-def divide_test_data(test_data):
+def divide_training_data(training_data):
     c = []
     e = []
     h = []
-    for row in test_data:
+    for row in training_data:
         if row[1] == "C":
             c.append(row)
         elif row[1] == "E":
             e.append(row)
         else:
             h.append(row)
-    return c,e,h
+    h_prior = len(h)/float(len(training_data))
+    c_prior = len(c)/float(len(training_data))
+    e_prior = len(e)/float(len(training_data))
+    priors = {'H':h_prior,'C':c_prior,'E':e_prior}
+    classes = {'H':h,'C':c,'E':e}
+    return classes,priors
     
 def mean(data):
     return sum(data)/float(len(data))
 
-def std_dev(data):
+def std(data):
     avg = mean(data)
     var = sum([(x-avg)**2 for x in data])/float(len(data)-1)
     return sqrt(var)
 
-def separate_data(test_data):
+def calcs_for_data(training_data):
     calcs = {}
-    label = test_data[0][1]
-    for i in range(len(test_data[0][0])):
-        column = [x[0][i] for x in test_data]   
-        tup = (mean(column), std_dev(column))
+    label = training_data[0][1]
+    for i in range(len(training_data[0][0])):
+        column = [x[0][i] for x in training_data]   
+        tup = (mean(column), std(column))
         key = str(i) + label
         calcs[key] = tup
     return calcs
 
+def gaussian(avg,sigma,xi):
+    return (1/(sqrt(2*pi)*sigma))*exp(-0.5*((xi-avg)/sigma)**2)
+
+'''
+For each xi in a row, calculate the gaussian using the yk piror from test data
+as well as the sigma and mean from the test data.
+So probably pass in a single row and the dictionary needed for the calcs
+calculate yh, ye, yc, so multiply all of the guassians 
+'''
+def calc_given_prior(row, calcs, prior, prior_letter):
+    gaussian_products = 1
+    for i in range(len(row)):
+        key = str(i) + prior_letter
+        gaussian_products *= gaussian(calcs[key][0],calcs[key][1], row[i])
+    return gaussian_products*prior
+
+
+def prediction(test_data, calcs, priors):
+    outcome = []
+    for row in test_data:
+        calcs_for_row = {}
+        for prior in priors:
+            calcs_for_row[prior] = calc_given_prior(row, calcs[prior], priors[prior], prior)
+        most_likely = max(calcs_for_row, key=calcs_for_row.get)
+        outcome.append(most_likely)
+    return (outcome)
+
+def Q3(outcome):
+    ss_files = os.listdir("ss")
+    ss_data = ''
+    for i in range(int(0.75*len(ss_files))+1,len(ss_files)):
+        initial = read_file("ss/" + ss_files[i])
+        ss_data += (initial[1])
+    correct = 0
+    for i in range(len(outcome)):
+        if outcome[i] == ss_data[i]:
+            correct += 1
+    return (correct/float(len(ss_data)))*100
+
 if __name__ == "__main__":
-    test_data = retrieve_test_data()   
-    classes = divide_test_data(test_data)
-    calcs = []
+    training_data = retrieve_training_data()   
+    classes, priors = divide_training_data(training_data)
+    calcs = {}
     for label in classes:
-        calcs.append(separate_data(label))
-    print(calcs)
+        calcs[label] = (calcs_for_data(classes[label]))
+    test_data = retrieve_test_data()
+    outcome = prediction(test_data, calcs, priors)
+    result = Q3(outcome)
+    print(result)
+    
