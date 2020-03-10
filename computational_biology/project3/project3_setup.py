@@ -52,14 +52,12 @@ def init_pssm_matrix(pssm_file, ss_file, train):
     for i in range(len(initial)):
         row_attr = []
         if i == 0:
-            for x in range(40):
-                row_attr.append(-1)
+            row_attr = [-1 for x in range(40)]
             row_attr.extend(initial[i])
             row_attr.extend(initial[i+1])
             row_attr.extend(initial[i+2])
         elif i == 1:
-            for x in range(20):
-                row_attr.append(-1)  
+            row_attr = [-1 for x in range(20)]
             row_attr.extend(initial[i-1])
             row_attr.extend(initial[i])
             row_attr.extend(initial[i+1])
@@ -83,10 +81,9 @@ def init_pssm_matrix(pssm_file, ss_file, train):
             row_attr.extend(initial[i])
             row_attr.extend(initial[i+1])
             row_attr.extend(initial[i+2])
-        if (train):
-            matrix.append((row_attr,ss[i]))
-        else:
-            matrix.append(row_attr)
+        matrix.append(row_attr)
+    if (train):
+        matrix = list(zip(matrix, ss))
     return matrix
 
 '''
@@ -103,6 +100,11 @@ def retrieve_training_data():
         total_training_data.extend(initial)
     return total_training_data
 
+'''
+Gets the remaining 25% of the files
+Gets the matrix for each
+Then concats into a single matrix
+'''
 def retrieve_test_data():
     total_test_data = []
     ss_files = os.listdir("ss")
@@ -112,50 +114,61 @@ def retrieve_test_data():
         total_test_data.extend(initial)
     return total_test_data
 
+'''
+Divides training data in three lists
+Rows that result in H
+Rows that result in C
+Rows that result in E
+Also calculates the priors for each
+'''
 def divide_training_data(training_data):
-    c = []
-    e = []
-    h = []
+    separated_data = {}
+    priors = {}
     for row in training_data:
-        if row[1] == "C":
-            c.append(row)
-        elif row[1] == "E":
-            e.append(row)
-        else:
-            h.append(row)
-    h_prior = len(h)/float(len(training_data))
-    c_prior = len(c)/float(len(training_data))
-    e_prior = len(e)/float(len(training_data))
-    priors = {'H':h_prior,'C':c_prior,'E':e_prior}
-    classes = {'H':h,'C':c,'E':e}
-    return classes,priors
-    
+        if (row[1] not in separated_data):
+            separated_data[row[1]] = list()
+        separated_data[row[1]].append(row[0])
+    for key in separated_data:
+        priors[key] = len(separated_data[key])/float(len(training_data))
+    return separated_data,priors
+
+'''
+Calculates average of the data
+'''
 def mean(data):
     return sum(data)/float(len(data))
 
+'''
+Calculates standard deviation of the data
+'''
 def std(data):
     avg = mean(data)
     var = sum([(x-avg)**2 for x in data])/float(len(data)-1)
     return sqrt(var)
 
-def calcs_for_data(training_data):
+'''
+Given the data that results in a specific yk (H,E, or C)
+Calculates the mean and standard deviation for each column
+'''
+def calcs_for_data(key, training_data):
     calcs = {}
-    label = training_data[0][1]
-    for i in range(len(training_data[0][0])):
-        column = [x[0][i] for x in training_data]   
+    for i in range(len(training_data[0])):
+        column = [x[i] for x in training_data]
         tup = (mean(column), std(column))
-        key = str(i) + label
-        calcs[key] = tup
+        label = str(i) + key
+        calcs[label] = tup
     return calcs
 
+'''
+Calculation for normal gaussian
+'''
 def gaussian(avg,sigma,xi):
     return (1/(sqrt(2*pi)*sigma))*exp(-0.5*((xi-avg)/sigma)**2)
 
 '''
-For each xi in a row, calculate the gaussian using the yk piror from test data
-as well as the sigma and mean from the test data.
-So probably pass in a single row and the dictionary needed for the calcs
-calculate yh, ye, yc, so multiply all of the guassians 
+For each xi in a row, calculate the gaussian using the sigma and mean from the test data. 
+Then using the yk prior from test data
+calculate the probability of it being that result, yk.
 '''
 def calc_given_prior(row, calcs, prior, prior_letter):
     gaussian_products = 1
@@ -173,7 +186,18 @@ def prediction(test_data, calcs, priors):
             calcs_for_row[prior] = calc_given_prior(row, calcs[prior], priors[prior], prior)
         most_likely = max(calcs_for_row, key=calcs_for_row.get)
         outcome.append(most_likely)
+    outcome = ''.join(outcome[0:])
     return (outcome)
+
+'''
+Retrives all of the calculations for each prior and stores them
+in a dict with the key being the letters for yk (H, E, or C).
+'''
+def calcs_for_each_prior(divided_data):
+    calcs = {}
+    for label in divided_data:
+        calcs[label] = (calcs_for_data(label, divided_data[label]))
+    return calcs
 
 def Q3(outcome):
     ss_files = os.listdir("ss")
@@ -185,14 +209,22 @@ def Q3(outcome):
     for i in range(len(outcome)):
         if outcome[i] == ss_data[i]:
             correct += 1
+    print(outcome.count('H')/float(ss_data.count('H')))
+    print(outcome.count('C')/float(ss_data.count('C')))
+    print(outcome.count('E')/float(ss_data.count('E')))
     return (correct/float(len(ss_data)))*100
+
+def save_data(calcs,priors):
+    with open("calcs.pickle", 'wb') as f:
+        pickle.dump(calcs, f)
+    with open("priors.pickle", 'wb') as f:
+        pickle.dump(priors, f)
 
 if __name__ == "__main__":
     training_data = retrieve_training_data()   
-    classes, priors = divide_training_data(training_data)
-    calcs = {}
-    for label in classes:
-        calcs[label] = (calcs_for_data(classes[label]))
+    divided_data, priors = divide_training_data(training_data)
+    calcs = calcs_for_each_prior(divided_data)
+    save_data(calcs, priors)
     test_data = retrieve_test_data()
     outcome = prediction(test_data, calcs, priors)
     result = Q3(outcome)
