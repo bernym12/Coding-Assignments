@@ -1,7 +1,6 @@
-import sys
-import os
+from os import listdir
 from math import sqrt,pi,exp
-import pickle
+from pickle import dump
 
 '''
 need to cocantenate our 75% of fasta files and then compute the sigma and mu for each column.
@@ -44,7 +43,6 @@ If looking at the last row, append two rows of 20 -1's to the end of it.
 Then create a tuple pair that contains the row paired with the ss value for that row
 '''
 
-# TODO: REALLY NEEDS TO BE REDUCED
 def init_pssm_matrix(pssm_file, ss_file, train):
     matrix = []
     initial = read_pssm_file(pssm_file)
@@ -93,8 +91,8 @@ Then concats these matrices into a single matrix
 '''
 def retrieve_training_data():
     total_training_data = []
-    ss_files = os.listdir("ss")
-    pssm_files = os.listdir("pssm")
+    ss_files = listdir("ss")
+    pssm_files = listdir("pssm")
     for i in range(int(0.75*len(pssm_files))):
         initial = init_pssm_matrix("pssm/" + pssm_files[i], "ss/" + ss_files[i], True)
         total_training_data.extend(initial)
@@ -107,10 +105,10 @@ Then concats into a single matrix
 '''
 def retrieve_test_data():
     total_test_data = []
-    ss_files = os.listdir("ss")
-    pssm_files = os.listdir("pssm")
+    ss_files = listdir("ss")
+    pssm_files = listdir("pssm")
     for i in range(int(0.75*len(pssm_files))+1,len(pssm_files)):
-        initial = init_pssm_matrix("pssm/" + pssm_files[i], "ss/" + ss_files[i], False)
+        initial = init_pssm_matrix(f"pssm/{pssm_files[i]}", f"ss/{ss_files[i]}", False)
         total_test_data.extend(initial)
     return total_test_data
 
@@ -141,7 +139,7 @@ def mean(data):
 '''
 Calculates standard deviation of the data
 '''
-def std(data):
+def std_dev(data):
     avg = mean(data)
     var = sum([(x-avg)**2 for x in data])/float(len(data)-1)
     return sqrt(var)
@@ -154,7 +152,7 @@ def calcs_for_data(key, training_data):
     calcs = {}
     for i in range(len(training_data[0])):
         column = [x[i] for x in training_data]
-        tup = (mean(column), std(column))
+        tup = (mean(column), std_dev(column))
         label = str(i) + key
         calcs[label] = tup
     return calcs
@@ -177,7 +175,10 @@ def calc_given_prior(row, calcs, prior, prior_letter):
         gaussian_products *= gaussian(calcs[key][0],calcs[key][1], row[i])
     return gaussian_products*prior
 
-
+'''
+Determines most likely output for each row given
+the data calculated from the training data
+'''
 def prediction(test_data, calcs, priors):
     outcome = []
     for row in test_data:
@@ -187,7 +188,7 @@ def prediction(test_data, calcs, priors):
         most_likely = max(calcs_for_row, key=calcs_for_row.get)
         outcome.append(most_likely)
     outcome = ''.join(outcome[0:])
-    return (outcome)
+    return outcome
 
 '''
 Retrives all of the calculations for each prior and stores them
@@ -199,8 +200,11 @@ def calcs_for_each_prior(divided_data):
         calcs[label] = (calcs_for_data(label, divided_data[label]))
     return calcs
 
+'''
+Outputs the percent accuracy of the results by comparing the predicted results to the ss files
+'''
 def Q3(outcome):
-    ss_files = os.listdir("ss")
+    ss_files = listdir("ss")
     ss_data = ''
     for i in range(int(0.75*len(ss_files))+1,len(ss_files)):
         initial = read_file("ss/" + ss_files[i])
@@ -209,16 +213,17 @@ def Q3(outcome):
     for i in range(len(outcome)):
         if outcome[i] == ss_data[i]:
             correct += 1
-    print(outcome.count('H')/float(ss_data.count('H')))
-    print(outcome.count('C')/float(ss_data.count('C')))
-    print(outcome.count('E')/float(ss_data.count('E')))
     return (correct/float(len(ss_data)))*100
 
+'''
+Saves the calcuated data for the means, standard deviations, and 
+priors into pickle files
+'''
 def save_data(calcs,priors):
     with open("calcs.pickle", 'wb') as f:
-        pickle.dump(calcs, f)
+        dump(calcs, f)
     with open("priors.pickle", 'wb') as f:
-        pickle.dump(priors, f)
+        dump(priors, f)
 
 if __name__ == "__main__":
     training_data = retrieve_training_data()   
@@ -228,5 +233,5 @@ if __name__ == "__main__":
     test_data = retrieve_test_data()
     outcome = prediction(test_data, calcs, priors)
     result = Q3(outcome)
-    print(result)
+    print(f"Prediction Accuracy for Remaining 25% of Files: {(result)}%")
     
