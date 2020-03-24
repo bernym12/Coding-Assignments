@@ -32,7 +32,7 @@ void ADCSetup() //Configure ADC
 	RCC->APB2ENR |= RCC_APB2ENR_ADC1EN; //Enable ADC1 clock
 										//EDIT
 	ADC1->SQR5 &= ~(0x1F);				//Clear ADC1 sequence register
-	ADC1->SQR5 | = 0x0005;				//Set ADC1 to channel 5
+	ADC1->SQR5 |= 0x0005;				//Set ADC1 to channel 5
 										//EDIT
 	ADC1->CR2 = ADC_CR2_ADON;			//Turn ADC1 on
 										//EDIT
@@ -44,9 +44,9 @@ void TimerSetup() //Configure Timer 11 for 1kHz Sampling
 {
 	//Enable TIM11 clock
 	RCC->APB2ENR |= RCC_APB2ENR_TIM11EN; //EDIT
-	TIM11->PSC = 199;					 //Set prescaler value
+	TIM11->PSC = 19;					 //Set prescaler value
 	//EDIT
-	TIM11->ARR = 79; //Set auto-reload value
+	TIM11->ARR = 104; //Set auto-reload value
 	//EDIT
 	TIM11->CNT = 0;					  //Initialize counter value
 	TIM11->SR &= ~TIM_SR_UIF;		  //Clear TIM11 pending flag
