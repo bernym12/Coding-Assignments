@@ -1,34 +1,31 @@
-
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
+USE IEEE.numeric_std.all;  
 use IEEE.STD_LOGIC_UNSIGNED.ALL;
 
-entity reg is 
-    generic (N : integer := 16;
-             M : integer := 4);
-    Port (WE : in std_logic; --write enable
-          DataIn : in std_logic_vector(N-1 downto 0); --data inputs
-          ReadAddress: in std_logic_vector(M-1 downto 0); -- read address
-          Address : in std_logic_vector(M-1 downto 0); --address to read/write to
-          DataOut : out std_logic_vector(N-1 downto 0)); --data output
-end reg;
 
-architecture behavior of reg is
-    subtype WORD is std_logic_vector(N-1 downto 0);
-    type memory is array (0 to 2**M -1) of WORD;
-    signal RAM: memory;
+entity data_mem is
+port (
+ address: in std_logic_vector(15 downto 0);
+ datain: in  std_logic_vector(15 downto 0);
+ dataout: out  std_logic_vector(15 downto 0);
+ WE, clk, rst: in std_logic
+);
+end data_mem;
    
+architecture Behavioral of data_mem is
+--signal rom_addr: std_logic_vector(3 downto 0);
+
+ type ram_type is array (0 to 1024) of std_logic_vector(15 downto 0);
+signal RAM: ram_type :=((others=> (others=>'0')));
 begin
-    writing: process(WE, Address, DataIn, ReadAddress)
-    variable ram_addr_in: integer range 0 to 2**M - 1; --translate addresss to integer
-	variable ram_addr_read: integer range 0 to 2**M - 1;	
-		begin
-            ram_addr_in :=conv_integer(Address); --the actual conversion of the address
-            ram_addr_read := conv_integer(ReadAddress);
-            if rising_edge(WE) then
-                RAM(ram_addr_in) <= DataIn;
-            end if;	  
-   			DataOut <= RAM(ram_addr_read);
+    process(clk)
+    begin
+        if rising_edge(clk) then
+            if WE = '1' then
+                RAM(conv_integer(address)) <= datain;                
+            end if;
+        end if;
     end process;
-    
-end behavior;
+dataout <= RAM(conv_integer(address(9 downto 0)));
+end Behavioral;

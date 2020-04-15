@@ -108,7 +108,7 @@ begin
                         PC_WE <= '1';
                     when "1000" => --branch
                         alu_code <= "001";
-                        rs2_or_imm <= '1';
+                        rs2_or_imm <= '0';
                         branch <= '1';
                         mem_to_reg <= '0';
                         reg_WE <= '0';
@@ -128,7 +128,7 @@ begin
                         sign_extend <= "00";
                     when "1100" => 
                         if (func_bit = '0') then
-                            alu_code <= "---";
+                            alu_code <= "000";
                             rs2_or_imm <= '1';
                             branch <= '0';
                             mem_to_reg <= '1';
@@ -137,11 +137,11 @@ begin
                             rts <= '0';
                             PC_WE <= '1';
                         else
-                            alu_code <= "---";
+                            alu_code <= "000";
                             rs2_or_imm <= '1';
                             branch <= '0';
                             mem_to_reg <= '0';
-                            reg_WE <= '1';
+                            reg_WE <= '0';
                             WE <= '1';
                             rts <= '0';
                             PC_WE <= '1';
