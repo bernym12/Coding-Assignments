@@ -40,6 +40,7 @@ def accuracy(output, pssm):
     for i in range(len(output)):
         if output[i] == pssm[i]:
             correct += 1
+            
     print("Accuracy:", float(correct/len(pssm)))  
     return  float(correct/len(pssm))
 
@@ -58,6 +59,11 @@ def top(contacts, rr, sequence_len):
     l_10_count = 0
     l_5_count = 0
     l_2_count = 0
+    overall_count = 0
+    rr_length = 0
+    incorrect = 0
+    for opt in rr:
+        rr_length += len(rr[opt])
     for contact in l_10_list:
         if contact[0][0] in rr:
             if contact[0][1] in rr[contact[0][0]]:
@@ -70,9 +76,18 @@ def top(contacts, rr, sequence_len):
         if contact[0][0] in rr:
             if contact[0][1] in rr[contact[0][0]]:
                 l_2_count += 1
+    for contact in contacts:
+        if contact[0][0] in rr:
+            if contact[0][1] in rr[contact[0][0]]:
+                overall_count += 1
+            else:
+                incorrect += 1
+        else:
+            incorrect += 1
     print("L10:", float(l_10_count)/l_10)
     print("L5:", float(l_5_count)/l_5)
     print("L2:", float(l_2_count)/l_2)
+    print("Overall Contacts Accuracy:", float(overall_count)/rr_length)
     return float(l_10_count)/l_10, float(l_5_count)/l_5, float(l_2_count)/l_2
 
 '''
@@ -86,6 +101,9 @@ def testing_data():
     pssm_files = listdir("pssm")
     accuracies = []
     tops = {}
+    l10 = 0
+    l5 = 0
+    l2 = 0
     for i in range(int(0.75*len(pssm_files))+1,len(pssm_files)):
         matrix = init_pssm_matrix(f"pssm/{pssm_files[i]}")
         rr = process_rr_file(f"rr/{rr_files[i]}")
@@ -93,9 +111,14 @@ def testing_data():
         pair_rr_with_pssm(matrix, rr)
         true_rr = [x[-1] for x in matrix]
         output, contacts = prediction(matrix, w)
-        tops[pssm_files[i]] = top(contacts, rr, sequence_len)
         print(pssm_files[i])
+        tops[pssm_files[i]] = top(contacts, rr, sequence_len)
         accuracies.append(accuracy(output, true_rr))
+    for each in tops:
+        l10 += tops[each][0]
+        l5 += tops[each][1]
+        l2 += tops[each][2]
+    print("Overall L10:", float(l10)/len(tops), "Overall L5:", float(l5)/len(tops), "Overall L2:", float(l2)/len(tops))
     print("Overall Accuracy:", sum(accuracies)/len(accuracies))
 
 if __name__ == "__main__":
@@ -110,5 +133,5 @@ if __name__ == "__main__":
     output, contacts = prediction(matrix, w)
     top(contacts, rr, sequence_len)
     accuracy(output, true_rr)
-    # testing_data()
+    testing_data()
 
